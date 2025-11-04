@@ -117,9 +117,16 @@ async function vtSubmitUrl(u){
       const st=ja?.data?.attributes?.status
       if(st!=='completed') continue
       const stats=ja?.data?.attributes?.stats||{}
-      const malicious=(stats.malicious||0)>0||(stats.suspicious||0)>0
-      console.log(`[VT] result for ${u} -> malicious:${malicious} stats:`, stats)
-      return {malicious,stats}
+      const urlId=btoa(u).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')
+      let rep=0
+      try{
+        const ru=await fetch(`https://www.virustotal.com/api/v3/urls/${urlId}`,{headers:{'x-apikey':key},signal:ctrl.signal})
+        if(ru.ok){ const ju=await ru.json(); rep = Number(ju?.data?.attributes?.reputation||0) }
+      }catch{}
+      const malicious=(typeof rep==='number' && rep<0)
+      console.log(`[VT] result for ${u} -> reputation:${rep} malicious:${malicious} stats:`, stats)
+      const link=`https://www.virustotal.com/gui/url/${urlId}`
+      return {malicious,stats,link}
     }
     return {malicious:false}
   }catch{return {malicious:false}} finally{clearTimeout(t)}
@@ -183,10 +190,15 @@ async function vtSubmitFile(fileBuf, filename){
       const st=ja?.data?.attributes?.status
       if(st!=='completed') continue
       const stats=ja?.data?.attributes?.stats||{}
-      sha256=ja?.meta?.file_info?.sha256
-      const malicious=(stats.malicious||0)>0||(stats.suspicious||0)>0
+      sha256=ja?.meta?.file_info?.sha256 || sha256Local
+      let rep=0
+      try{
+        const rf=await fetch(`https://www.virustotal.com/api/v3/files/${sha256}`,{headers:{'x-apikey':key},signal:ctrl.signal})
+        if(rf.ok){ const jf=await rf.json(); rep = Number(jf?.data?.attributes?.reputation||0) }
+      }catch{}
+      const malicious=(typeof rep==='number' && rep<0)
       const link=sha256?`https://www.virustotal.com/gui/file/${sha256}`:guiLink
-      console.log(`[VT] file result malicious:${malicious} sha256:${sha256||sha256Local}`)
+      console.log(`[VT] file result reputation:${rep} malicious:${malicious} sha256:${sha256}`)
       return {malicious,stats,link}
     }
     return {malicious:false,link:guiLink}
@@ -206,12 +218,13 @@ function addWarn(guildId, userId){
   return v
 }
 
-async function enforceOnUser(msg, reason){
+async function enforceOnUser(msg, reason, opts={}){
   const cfg=readConfig()
   const count=addWarn(msg.guild.id, msg.author.id)
   const act=cfg.antiscam.action
   const thr=cfg.antiscam.warnThreshold
-  if(cfg.antiscam.deleteMessage){ try{ await msg.delete().catch(()=>{}) }catch{} }
+  const mustDelete=opts.forceDelete===true || cfg.antiscam.deleteMessage
+  if(mustDelete){ try{ await msg.delete().catch(()=>{}) }catch{} }
   try{
     const embed=new EmbedBuilder().setColor(0xFF0000).setTitle('antiscam').setDescription(reason).addFields(
       { name: 'Người gửi', value: `${msg.author?.tag||msg.author?.id}`, inline: true },
@@ -276,16 +289,7 @@ client.on(Events.MessageCreate, async msg => {
     const urls=extractUrls(msg)
     console.log(`[VT] message ${msg.id} by ${msg.author?.tag||msg.author?.id}: found ${urls.length} url(s) in #${msg.channel?.name||msg.channelId}`)
     if(urls.length===0) return
-    const cfgAnt=readConfig().antiscam
-    const isSuspiciousText=/(nitro|free|gift|crack|hack|cheat|virus|malware|roblox)/i.test(msg.content||'')
-    const hasSuspiciousImage=[...msg.attachments.values()].some(a=>{
-      const n=(a.name||'').toLowerCase()
-      return (a.contentType||'').startsWith('image/')||/(\.png|\.jpg|\.jpeg|\.gif|\.webp)$/.test(n)
-    })
-    if(cfgAnt.imageScan && (isSuspiciousText && hasSuspiciousImage)){
-      await enforceOnUser(msg, 'mã độc discord')
-      return
-    }
+    // Bỏ kiểm tra ảnh nghi vấn tức thời; chỉ quyết định theo kết quả VirusTotal
     for(const u of urls){
       const dl=await downloadFile(u)
       let res
@@ -307,7 +311,7 @@ client.on(Events.MessageCreate, async msg => {
         if(cached){
           if(cached.malicious){
             console.log(`[VT] cached malicious for ${dl.name} ${dl.sha256}, deleting and kicking`)
-            await enforceOnUser(msg, 'mã độc discord')
+            await enforceOnUser(msg, 'mã độc discord', { forceDelete: true })
             break
           } else {
             continue
@@ -335,7 +339,7 @@ client.on(Events.MessageCreate, async msg => {
       }
       if(res.malicious){
         console.log(`[VT] malicious detected from user ${msg.author?.tag||msg.author?.id}`)
-        await enforceOnUser(msg, 'mã độc discord')
+        await enforceOnUser(msg, 'mã độc discord', { forceDelete: true })
         break
       }
     }

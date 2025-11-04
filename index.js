@@ -103,6 +103,18 @@ async function vtSubmitUrl(u){
   const ctrl=new AbortController()
   const t=setTimeout(()=>ctrl.abort(),15000)
   try{
+    const urlId=btoa(u).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')
+    try{
+      const r0=await fetch(`https://www.virustotal.com/api/v3/urls/${urlId}`,{headers:{'x-apikey':key},signal:ctrl.signal})
+      if(r0.ok){
+        const j0=await r0.json()
+        const rep=Number(j0?.data?.attributes?.reputation||0)
+        const link=`https://www.virustotal.com/gui/url/${urlId}`
+        const malicious=(typeof rep==='number' && rep<0)
+        console.log(`[VT] cache-hit URL reputation:${rep} malicious:${malicious}`)
+        return {malicious,stats:j0?.data?.attributes?.last_analysis_stats||{},link}
+      }
+    }catch{}
     console.log(`[VT] submit ${u}`)
     const r=await fetch('https://www.virustotal.com/api/v3/urls',{method:'POST',headers:{'x-apikey':key,'content-type':'application/x-www-form-urlencoded'},body:new URLSearchParams({url:u}).toString(),signal:ctrl.signal})
     if(!r.ok) return {malicious:false}
@@ -117,7 +129,6 @@ async function vtSubmitUrl(u){
       const st=ja?.data?.attributes?.status
       if(st!=='completed') continue
       const stats=ja?.data?.attributes?.stats||{}
-      const urlId=btoa(u).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')
       let rep=0
       try{
         const ru=await fetch(`https://www.virustotal.com/api/v3/urls/${urlId}`,{headers:{'x-apikey':key},signal:ctrl.signal})
@@ -173,6 +184,16 @@ async function vtSubmitFile(fileBuf, filename){
   try{
     const sha256Local=crypto.createHash('sha256').update(fileBuf).digest('hex')
     const guiLink=`https://www.virustotal.com/gui/file/${sha256Local}`
+    try{
+      const r0=await fetch(`https://www.virustotal.com/api/v3/files/${sha256Local}`,{headers:{'x-apikey':key},signal:ctrl.signal})
+      if(r0.ok){
+        const j0=await r0.json()
+        const rep=Number(j0?.data?.attributes?.reputation||0)
+        const malicious=(typeof rep==='number' && rep<0)
+        console.log(`[VT] cache-hit FILE reputation:${rep} malicious:${malicious}`)
+        return {malicious,stats:j0?.data?.attributes?.last_analysis_stats||{},link: guiLink}
+      }
+    }catch{}
     const fd=new FormData()
     const blob=new Blob([fileBuf])
     fd.append('file', blob, filename||'file')

@@ -1,0 +1,101 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AntiScam Dashboard</title>
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+  </style>
+  </head>
+  <body>
+    <div class="container layout">
+      <aside class="sidebar">
+        <div class="brand">AntiScam</div>
+        <a href="#" class="side active" data-tab-link="overview">Tổng quan</a>
+        <a href="#" class="side" data-tab-link="protection">Bảo vệ</a>
+        <a href="#" class="side" data-tab-link="guilds">Guilds</a>
+      </aside>
+      <main class="content">
+        <div class="topbar">
+          <h1>Dashboard</h1>
+          <div></div>
+        </div>
+        <section id="tab-overview" class="tabpane active">
+          <div id="status" class="card"></div>
+        </section>
+        <section id="tab-protection" class="tabpane">
+          <div class="grid-2">
+            <div class="card">
+              <h2>VirusTotal</h2>
+              <p class="help">Quét URL/tệp và tự xử lý khi phát hiện độc hại.</p>
+              <label class="row"><input type="checkbox" id="virusToggle"/> Bật quét VirusTotal</label>
+              <div class="row">
+                <input type="password" id="vtKey" placeholder="Nhập VirusTotal API Key" autocomplete="new-password" autocapitalize="off" spellcheck="false" />
+                <button id="saveVt">Lưu</button>
+                <button id="clearVt">Xóa</button>
+              </div>
+              <small id="vtStatus"></small>
+            </div>
+            <div class="card">
+              <h2>Antiscam</h2>
+              <p class="help">Phát hiện ảnh/từ khóa nghi vấn, cảnh cáo và xử lý.</p>
+              <label class="row"><input type="checkbox" id="asImage"/> Kiểm tra ảnh nghi vấn</label>
+              <label class="row"><input type="checkbox" id="asDelete"/> Xóa tin nhắn khi vi phạm</label>
+              <div class="row">
+                <label>Ngưỡng cảnh cáo
+                  <input type="number" id="asThreshold" min="1" value="3" />
+                </label>
+                <label>Hành động
+                  <select id="asAction">
+                    <option value="none">none</option>
+                    <option value="kick">kick</option>
+                    <option value="ban">ban</option>
+                  </select>
+                </label>
+                <button id="saveAS">Lưu</button>
+              </div>
+            </div>
+            <div class="card">
+              <h2>Chống spam</h2>
+              <p class="help">Giới hạn số tin trong khoảng thời gian, tự mute khi quá ngưỡng.</p>
+              <label class="row"><input type="checkbox" id="spamEnabled"/> Bật chống spam</label>
+              <div class="row rows">
+                <label>Cửa sổ (giây)
+                  <input type="number" id="spamWindow" min="1" value="5" placeholder="5" title="Khoảng thời gian tính spam (giây)" />
+                </label>
+                <label>Số tin tối đa
+                  <input type="number" id="spamMax" min="1" value="5" placeholder="5" title="Số tin nhắn tối đa trong cửa sổ" />
+                </label>
+                <label>Ngưỡng cảnh cáo
+                  <input type="number" id="spamWarn" min="1" value="3" placeholder="3" title="Số lần cảnh cáo trước khi mute" />
+                </label>
+                <label>Mute (phút)
+                  <input type="number" id="spamMute" min="1" value="10" placeholder="10" title="Thời gian mute khi đạt ngưỡng" />
+                </label>
+              </div>
+              <div class="row">
+                <button id="saveSpam">Lưu</button>
+              </div>
+              <small class="help">
+                Cửa sổ: khoảng thời gian đếm spam. Số tin tối đa: ngưỡng trong cửa sổ. Ngưỡng cảnh cáo: số lần vi phạm trước khi mute. Mute: thời gian tắt tiếng.
+              </small>
+            </div>
+          </div>
+        </section>
+        <section id="tab-guilds" class="tabpane">
+          <div class="card">
+            <h2>Guilds</h2>
+            <div class="row">
+              <input id="guildInput" placeholder="Nhập Guild ID" />
+              <button id="addGuild">Thêm</button>
+            </div>
+            <ul id="guilds"></ul>
+          </div>
+        </section>
+      </main>
+    </div>
+    <script src="/script.js"></script>
+  </body>
+  </html>

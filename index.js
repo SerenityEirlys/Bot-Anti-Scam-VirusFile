@@ -154,13 +154,14 @@ async function downloadFile(u){
     const buf=Buffer.from(ab)
     const sha256=crypto.createHash('sha256').update(buf).digest('hex')
     if(buf.length>26214400) return null
+    const contentType=(r.headers.get('content-type')||'').toLowerCase()
     let name='file'
     try{
       const uo=new URL(u)
       const p=uo.pathname.split('/').filter(Boolean)
       if(p.length) name=p[p.length-1]
     }catch{}
-    return { buffer: buf, name, sha256 }
+    return { buffer: buf, name, sha256, contentType }
   }catch{return null} finally{clearTimeout(t)}
 }
 
@@ -289,24 +290,13 @@ client.on(Events.MessageCreate, async msg => {
     const urls=extractUrls(msg)
     console.log(`[VT] message ${msg.id} by ${msg.author?.tag||msg.author?.id}: found ${urls.length} url(s) in #${msg.channel?.name||msg.channelId}`)
     if(urls.length===0) return
-    // Bỏ kiểm tra ảnh nghi vấn tức thời; chỉ quyết định theo kết quả VirusTotal
     for(const u of urls){
       const dl=await downloadFile(u)
       let res
       if(dl){
-        const quickLink=`https://www.virustotal.com/gui/file/${dl.sha256}`
-        try{
-          const embed=new EmbedBuilder()
-            .setColor(0xFF0000)
-            .setTitle('antiscam')
-            .setDescription(dl.name)
-            .addFields(
-              { name: 'Người gửi', value: `${msg.author?.tag||msg.author?.id}`, inline: true },
-              { name: 'Loại', value: 'mã độc discord', inline: true },
-              { name: 'VirusTotal', value: quickLink, inline: false }
-            )
-          await msg.reply({ embeds: [embed] }).catch(()=>{})
-        }catch{}
+        if(dl.contentType && dl.contentType.startsWith('image/')){
+          continue
+        }
         const cached=fileScanCache.get(dl.sha256)
         if(cached){
           if(cached.malicious){
@@ -318,21 +308,6 @@ client.on(Events.MessageCreate, async msg => {
           }
         }
         res=await vtSubmitFile(dl.buffer, dl.name)
-        if(res?.link){
-          console.log(`[VT] replied with file report link ${res.link}`)
-          try{
-            const embed2=new EmbedBuilder()
-              .setColor(0xFF0000)
-              .setTitle('antiscam')
-              .setDescription(dl.name)
-              .addFields(
-                { name: 'Người gửi', value: `${msg.author?.tag||msg.author?.id}`, inline: true },
-                { name: 'Loại', value: 'mã độc discord', inline: true },
-                { name: 'VirusTotal', value: res.link, inline: false }
-              )
-            await msg.reply({ embeds: [embed2] }).catch(()=>{})
-          }catch{}
-        }
         fileScanCache.set(dl.sha256,{ malicious: !!res?.malicious, link: res?.link || quickLink, name: dl.name, at: Date.now() })
       } else {
         res=await vtSubmitUrl(u)
@@ -340,6 +315,7 @@ client.on(Events.MessageCreate, async msg => {
       if(res.malicious){
         console.log(`[VT] malicious detected from user ${msg.author?.tag||msg.author?.id}`)
         await enforceOnUser(msg, 'mã độc discord', { forceDelete: true })
+        try{ if(res.link){ const embed=new EmbedBuilder().setColor(0xFF0000).setTitle('antiscam').setDescription(dl?dl.name:'URL nghi vấn').addFields({ name:'Người gửi', value:`${msg.author?.tag||msg.author?.id}`, inline:true },{ name:'VirusTotal', value: res.link, inline:false }); await msg.channel.send({ embeds:[embed] }).catch(()=>{}) } }catch{}
         break
       }
     }

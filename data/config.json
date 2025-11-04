@@ -3,11 +3,19 @@
     "1399234562457997312"
   ],
   "virusScan": false,
-  "vtApiKey": "31696dfe0e75772e551559bd8d9c0a2dbf9d34c8e9788770b91036238c43e95e",
+  "vtApiKey": "",
   "antiscam": {
     "imageScan": false,
-    "deleteMessage": true,
+    "deleteMessage": false,
     "warnThreshold": 3,
-    "action": "kick"
+    "action": "kick",
+    "spam": {
+      "enabled": false,
+      "windowSec": 2,
+      "maxMessages": 3,
+      "deleteMessage": true,
+      "warnThreshold": 3,
+      "muteMinutes": 10
+    }
   }
 }

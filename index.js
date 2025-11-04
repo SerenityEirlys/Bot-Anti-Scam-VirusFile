@@ -36,7 +36,8 @@ client.once(Events.ClientReady, async c => {
           await rest.put(Routes.applicationGuildCommands(clientId, guildId), { body })
           console.log(`Registered ${body.length} commands to guild ${guildId}`)
         }
-        await registerForGuilds(cfg, clientId, rest, body)
+        const cfgFiltered = { ...cfg, guildIds: (cfg.guildIds||[]).filter(id => !inGuild || id !== guildId) }
+        await registerForGuilds(cfgFiltered, clientId, rest, body)
       } catch (e) {
         if (e?.status === 403 || e?.code === 50001) {
           console.warn('Guild register denied (403/50001). Falling back to global.')

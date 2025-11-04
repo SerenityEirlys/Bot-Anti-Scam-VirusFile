@@ -100,6 +100,10 @@ async function loadToggle(){
 loadToggle();
 setInterval(loadToggle,5000);
 
+async function saveAntiscam(part){
+  await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({antiscam:part})});
+}
+
 document.getElementById('saveVt').onclick=async()=>{
   const key=(document.getElementById('vtKey').value||'').trim();
   if(!key) return;
@@ -131,3 +135,20 @@ document.getElementById('saveAS').onclick=async()=>{
   await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
   loadToggle();
 }
+
+document.getElementById('saveSpam').onclick=async()=>{
+  await saveAntiscam({
+    spam:{
+      enabled: document.getElementById('spamEnabled').checked,
+      windowSec: Number(document.getElementById('spamWindow').value||5),
+      maxMessages: Number(document.getElementById('spamMax').value||5),
+      warnThreshold: Number(document.getElementById('spamWarn').value||3),
+      muteMinutes: Number(document.getElementById('spamMute').value||10),
+      deleteMessage: true
+    }
+  })
+  loadToggle();
+}
+
+document.getElementById('asImage').onchange=()=>saveAntiscam({ imageScan: document.getElementById('asImage').checked })
+document.getElementById('asDelete').onchange=()=>saveAntiscam({ deleteMessage: document.getElementById('asDelete').checked })
